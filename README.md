@@ -1,6 +1,6 @@
-# 🦙 Fine-Tuned Llama 3.2 1B with ORPO - Deploy with Ollama
+# 🦙 Fine-Tune Llama 3.2 1B with ORPO & Deploy with Ollama
 
-This repository contains a **fine-tuned Llama 3.2 1B model** trained using ORPO (Odds Ratio Preference Optimization), ready for local deployment with **Ollama**.
+A complete **pedagogical tutorial** for fine-tuning Llama 3.2 1B using ORPO (Odds Ratio Preference Optimization) and deploying it locally with Ollama.
 
 ## 📁 Repository Contents
 
@@ -9,40 +9,55 @@ This repository contains a **fine-tuned Llama 3.2 1B model** trained using ORPO 
 | `llama1B.ipynb` | Complete training notebook with step-by-step explanations |
 | `README.md` | This guide |
 
+> ⚠️ **Note**: The GGUF model file and Modelfile are **not included** due to their large size (~2.5GB). You'll generate them by running the notebook.
+
 ---
 
-## 🚀 Quick Start: Deploy with Ollama
+## 🎯 What You'll Learn
 
-### Prerequisites
+1. **Fine-tune an LLM** using ORPO preference optimization
+2. **Export to GGUF format** for efficient local inference
+3. **Deploy with Ollama** for easy local usage
+4. **Understand LoRA, quantization, and preference learning**
 
-1. **Install Ollama** from [ollama.ai](https://ollama.ai)
-   - Windows: Download and run the installer
-   - macOS: `brew install ollama`
-   - Linux: `curl -fsSL https://ollama.ai/install.sh | sh`
+---
 
-2. **Verify installation:**
-   ```bash
-   ollama --version
-   ```
+## 🚀 Getting Started
 
-### Step 1: Clone or Download This Repository
+### Step 1: Run the Training Notebook
 
+Open `llama1B.ipynb` in **Google Colab** (recommended) or locally with a CUDA GPU:
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/iDiagoValeta/llama1B-ORPO/blob/master/llama1B.ipynb)
+
+The notebook will:
+- Fine-tune Llama 3.2 1B with ORPO on the UltraFeedback dataset
+- Export the model as a `.gguf` file
+- Generate a `Modelfile` for Ollama
+
+### Step 2: Install Ollama
+
+Download from [ollama.ai](https://ollama.ai):
+- **Windows**: Download and run the installer
+- **macOS**: `brew install ollama`
+- **Linux**: `curl -fsSL https://ollama.ai/install.sh | sh`
+
+Verify installation:
 ```bash
-git clone https://github.com/YOUR_USERNAME/YOUR_REPO.git
-cd YOUR_REPO
+ollama --version
 ```
 
-Or download as ZIP and extract.
+### Step 3: Create Your Ollama Model
 
-### Step 2: Create the Ollama Model
+After running the notebook, you'll have two files:
+- `llama-3.2-1b-instruct.F16.gguf` (the fine-tuned model)
+- `Modelfile` (Ollama configuration)
 
-Navigate to the folder containing the `.gguf` and `Modelfile`, then run:
+Navigate to the folder containing these files and run:
 
 ```bash
 ollama create llama1b-orpo -f Modelfile
 ```
-
-> 📝 **What this does**: Ollama reads the `Modelfile` which points to the `.gguf` file and creates a local model named `llama1b-orpo`.
 
 **Expected output:**
 ```
@@ -52,7 +67,7 @@ writing manifest
 success
 ```
 
-### Step 3: Run Your Model
+### Step 4: Run Your Model
 
 ```bash
 ollama run llama1b-orpo
@@ -63,7 +78,9 @@ You'll enter an interactive chat:
 >>> Hello! What can you help me with?
 ```
 
-### Step 4: Use in Your Applications
+---
+
+## 💻 Using Your Model in Applications
 
 #### Python Example
 ```python
@@ -113,7 +130,7 @@ print(response.choices[0].message.content)
 
 ## 📖 Understanding the Modelfile
 
-The `Modelfile` tells Ollama how to load and run your model:
+The notebook generates a `Modelfile` that tells Ollama how to run your model:
 
 ```dockerfile
 FROM llama-3.2-1b-instruct.F16.gguf
@@ -127,8 +144,6 @@ PARAMETER temperature 1.5
 PARAMETER min_p 0.1
 ```
 
-### Key Components Explained
-
 | Component | Purpose |
 |-----------|---------|
 | `FROM` | Path to the GGUF model file |
@@ -137,7 +152,7 @@ PARAMETER min_p 0.1
 | `PARAMETER temperature` | Creativity level (higher = more creative) |
 | `PARAMETER min_p` | Minimum probability threshold for sampling |
 
-### Customizing Parameters
+### Customizing Your Modelfile
 
 You can adjust the model behavior by modifying the `Modelfile`:
 
@@ -227,24 +242,18 @@ ollama serve
 
 ---
 
-## 🔄 Creating Your Own Fine-Tuned Model
+## 🔄 Customizing the Training
 
-Want to train your own model? Here's the workflow:
-
-1. **Run the notebook** (`llama1B.ipynb`) in Google Colab or locally
-2. **Modify the dataset** to match your use case
-3. **Export to GGUF** using Unsloth's `save_pretrained_gguf()`
-4. **Create a Modelfile** pointing to your new GGUF
-5. **Deploy with Ollama** using `ollama create`
+Want to train on your own data? Modify the notebook:
 
 ### Changing the Dataset
 
-In the notebook, replace:
+Replace the dataset loading code:
 ```python
 dataset = load_dataset("trl-lib/ultrafeedback_binarized", split="train")
 ```
 
-With your own dataset in the format:
+With your own dataset in this format:
 ```python
 # Each example needs:
 {
@@ -253,21 +262,6 @@ With your own dataset in the format:
     "rejected": "Bad response (not preferred)"
 }
 ```
-
----
-
-## 🚨 Note on Large Files
-
-The following files are **not included** in this repository due to their size:
-
-| File | Description |
-|------|-------------|
-| `llama-3.2-1b-instruct.F16.gguf` | The fine-tuned model in GGUF format |
-| `Modelfile` | Ollama configuration file for deploying the model |
-
-You can generate these files by running the `llama1B.ipynb` notebook. Once generated, you can use them to deploy your model locally with Ollama.
-
----
 
 ## 📚 Resources
 
