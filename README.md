@@ -7,7 +7,6 @@ This repository contains a **fine-tuned Llama 3.2 1B model** trained using ORPO 
 | File | Description |
 |------|-------------|
 | `llama1B.ipynb` | Complete training notebook with step-by-step explanations |
-| `Modelfile` | Ollama configuration file for deploying the model |
 | `README.md` | This guide |
 
 ---
