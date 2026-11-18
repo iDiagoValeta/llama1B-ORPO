@@ -1,285 +1,61 @@
-# 🦙 Fine-Tune Llama 3.2 1B with ORPO & Deploy with Ollama
+# llama1B-ORPO
 
-A complete **pedagogical tutorial** for fine-tuning Llama 3.2 1B using ORPO (Odds Ratio Preference Optimization) and deploying it locally with Ollama.
+**A Colab notebook that fine-tunes Llama 3.2 1B Instruct with ORPO preference optimization, exports it to GGUF and runs it locally with Ollama.**
 
-## 📁 Repository Contents
+> **Context.** Built in February 2026 as a personal learning project, when I was finishing my Computer Engineering degree at UPV and working at Grupo CEU. It was my first pass at LLM fine-tuning, a topic I kept working on in later projects. It is a one-notebook tutorial, not a tuned or evaluated model.
 
-| File | Description |
-|------|-------------|
-| `llama1B.ipynb` | Complete training notebook with step-by-step explanations |
-| `README.md` | This guide |
+## What it does
 
-> ⚠️ **Note**: The GGUF model file and Modelfile are **not included** due to their large size (~2.5GB). You'll generate them by running the notebook.
+- Loads `unsloth/Llama-3.2-1B-Instruct` in 4-bit and attaches LoRA adapters (r=16, rsLoRA).
+- Fine-tunes it with ORPO on a 5,000-example sample of `trl-lib/ultrafeedback_binarized`.
+- Exports the merged model to a single F16 GGUF file and generates an Ollama `Modelfile`.
+- Copies both files to Google Drive so they survive the Colab session.
+- Includes explanations of ORPO, LoRA, 4-bit quantization and GGUF in the notebook's markdown cells.
 
----
+## How it works
 
-## 🎯 What You'll Learn
+1. Install Unsloth, TRL and Datasets.
+2. Load the base model with `FastLanguageModel` (max sequence length 1024, 4-bit).
+3. Convert UltraFeedback pairs to `{prompt, chosen, rejected}` and drop examples over 8,000 characters.
+4. Train with `ORPOTrainer`: learning rate 5e-6, beta 0.1, batch size 2 with 4 gradient accumulation steps (effective 8), 200 steps.
+5. Call `save_pretrained_gguf(..., quantization_method="f16")`, which merges the adapters and converts with llama.cpp.
+6. Create the Ollama model from the generated GGUF and `Modelfile`.
 
-1. **Fine-tune an LLM** using ORPO preference optimization
-2. **Export to GGUF format** for efficient local inference
-3. **Deploy with Ollama** for easy local usage
-4. **Understand LoRA, quantization, and preference learning**
+## Results
 
----
+Printed outputs saved in `llama1B.ipynb` (one run on a Colab Tesla T4, 14.7 GB):
 
-## 🚀 Getting Started
+- 4,875 examples left after the length filter.
+- 11,272,192 of 1,247,086,592 parameters trained (0.90%).
+- 200 steps, runtime 970.7 s, training loss 1.873 (`TrainOutput`).
+- The 200 steps cover about 0.33 of an epoch of the filtered set.
 
-### Step 1: Run the Training Notebook
+No benchmark or comparison against the base model was run. The single test prompt in the notebook (asking for a one-sentence explanation of ORPO) got an answer that describes ORPO incorrectly, so the notebook shows that the pipeline works end to end, not that the model improved.
 
-Open `llama1B.ipynb` in **Google Colab** (recommended) or locally with a CUDA GPU:
+## Run it
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/iDiagoValeta/llama1B-ORPO/blob/master/llama1B.ipynb)
-
-The notebook will:
-- Fine-tune Llama 3.2 1B with ORPO on the UltraFeedback dataset
-- Export the model as a `.gguf` file
-- Generate a `Modelfile` for Ollama
-
-### Step 2: Install Ollama
-
-Download from [ollama.ai](https://ollama.ai):
-- **Windows**: Download and run the installer
-- **macOS**: `brew install ollama`
-- **Linux**: `curl -fsSL https://ollama.ai/install.sh | sh`
-
-Verify installation:
-```bash
-ollama --version
-```
-
-### Step 3: Create Your Ollama Model
-
-After running the notebook, you'll have two files:
-- `llama-3.2-1b-instruct.F16.gguf` (the fine-tuned model)
-- `Modelfile` (Ollama configuration)
-
-Navigate to the folder containing these files and run:
+1. Open `llama1B.ipynb` in Google Colab, or locally with a CUDA GPU (the notebook says 8 GB of VRAM is enough). Choose a GPU runtime and run the cells in order. The Unsloth install can take several minutes. The Drive cell needs Colab; skip it elsewhere.
+2. Download `llama-3.2-1b-instruct.F16.gguf` and `Modelfile` from the Drive folder `ollama_export_llama1b`. They are not in the repo because of their size.
+3. Install [Ollama](https://ollama.com) and, in the folder with both files:
 
 ```bash
 ollama create llama1b-orpo -f Modelfile
-```
-
-**Expected output:**
-```
-transferring model data
-creating model layer
-writing manifest
-success
-```
-
-### Step 4: Run Your Model
-
-```bash
 ollama run llama1b-orpo
 ```
 
-You'll enter an interactive chat:
+I did not re-run the notebook or the Ollama steps when writing this README.
+
+## Repository layout
+
 ```
->>> Hello! What can you help me with?
-```
-
----
-
-## 💻 Using Your Model in Applications
-
-#### Python Example
-```python
-import requests
-
-response = requests.post(
-    "http://localhost:11434/api/generate",
-    json={
-        "model": "llama1b-orpo",
-        "prompt": "Explain machine learning in simple terms.",
-        "stream": False
-    }
-)
-print(response.json()["response"])
+llama1B.ipynb   training, GGUF export and test, with explanations
+README.md       this file
 ```
 
-#### cURL Example
-```bash
-curl http://localhost:11434/api/generate -d '{
-  "model": "llama1b-orpo",
-  "prompt": "What is ORPO?",
-  "stream": false
-}'
-```
+## Stack
 
-#### Using the OpenAI-Compatible API
-Ollama provides an OpenAI-compatible endpoint:
+Python, Unsloth, TRL (ORPOTrainer), Hugging Face Datasets, LoRA, llama.cpp (GGUF), Ollama, Google Colab.
 
-```python
-from openai import OpenAI
+## Model license
 
-client = OpenAI(
-    base_url="http://localhost:11434/v1",
-    api_key="ollama"  # Can be any string
-)
-
-response = client.chat.completions.create(
-    model="llama1b-orpo",
-    messages=[
-        {"role": "user", "content": "Hello! How are you?"}
-    ]
-)
-print(response.choices[0].message.content)
-```
-
----
-
-## 📖 Understanding the Modelfile
-
-The notebook generates a `Modelfile` that tells Ollama how to run your model:
-
-```dockerfile
-FROM llama-3.2-1b-instruct.F16.gguf
-
-TEMPLATE """{{ if .Messages }}..."""
-
-PARAMETER stop "<|start_header_id|>"
-PARAMETER stop "<|end_header_id|>"
-PARAMETER stop "<|eot_id|>"
-PARAMETER temperature 1.5
-PARAMETER min_p 0.1
-```
-
-| Component | Purpose |
-|-----------|---------|
-| `FROM` | Path to the GGUF model file |
-| `TEMPLATE` | Chat formatting template (Llama 3 format) |
-| `PARAMETER stop` | Tokens that signal end of generation |
-| `PARAMETER temperature` | Creativity level (higher = more creative) |
-| `PARAMETER min_p` | Minimum probability threshold for sampling |
-
-### Customizing Your Modelfile
-
-You can adjust the model behavior by modifying the `Modelfile`:
-
-```dockerfile
-# More deterministic responses
-PARAMETER temperature 0.7
-
-# Longer responses
-PARAMETER num_predict 512
-
-# Add a system prompt
-SYSTEM "You are a helpful assistant specialized in explaining AI concepts."
-```
-
-After modifying, recreate the model:
-```bash
-ollama create llama1b-orpo -f Modelfile
-```
-
----
-
-## 🧠 About the Training Process
-
-This model was fine-tuned using **ORPO (Odds Ratio Preference Optimization)**, a technique that:
-
-1. **Combines SFT and alignment** in a single training phase
-2. **Eliminates the reference model** required by DPO/RLHF
-3. **Reduces memory usage** and training time
-
-### Training Details
-
-| Parameter | Value |
-|-----------|-------|
-| Base Model | Llama 3.2 1B Instruct |
-| Method | ORPO with LoRA (r=16) |
-| Dataset | UltraFeedback (5,000 examples) |
-| Training Steps | 200 |
-| Quantization | F16 (GGUF) |
-
-For the complete training code, see `llama1B.ipynb`.
-
----
-
-## 💡 Tips and Troubleshooting
-
-### Common Issues
-
-**"Model not found" error:**
-```bash
-# Make sure you're in the correct directory
-cd /path/to/folder/with/gguf/and/Modelfile
-ollama create llama1b-orpo -f Modelfile
-```
-
-**Model runs slowly:**
-- Ensure Ollama is using your GPU: check with `ollama ps`
-- For CPU-only systems, consider using a smaller quantization (q4_k_m)
-
-**Out of memory:**
-- The F16 model requires ~2-3GB RAM
-- Use a quantized version for lower memory usage
-
-### Checking Model Status
-
-```bash
-# List all local models
-ollama list
-
-# Show model information
-ollama show llama1b-orpo
-
-# Remove a model
-ollama rm llama1b-orpo
-```
-
-### Running as a Service
-
-Ollama runs as a background service. To check its status:
-
-```bash
-# Check if Ollama is running
-ollama ps
-
-# Start Ollama service (if not auto-started)
-ollama serve
-```
-
----
-
-## 🔄 Customizing the Training
-
-Want to train on your own data? Modify the notebook:
-
-### Changing the Dataset
-
-Replace the dataset loading code:
-```python
-dataset = load_dataset("trl-lib/ultrafeedback_binarized", split="train")
-```
-
-With your own dataset in this format:
-```python
-# Each example needs:
-{
-    "prompt": "User's question or instruction",
-    "chosen": "Good response (preferred)",
-    "rejected": "Bad response (not preferred)"
-}
-```
-
-## 📚 Resources
-
-- **ORPO Paper**: [arXiv:2403.07691](https://arxiv.org/abs/2403.07691)
-- **Ollama Documentation**: [ollama.ai](https://ollama.ai)
-- **Unsloth** (Fast Fine-tuning): [github.com/unslothai/unsloth](https://github.com/unslothai/unsloth)
-- **TRL Library**: [github.com/huggingface/trl](https://github.com/huggingface/trl)
-- **GGUF Format**: [github.com/ggerganov/ggml](https://github.com/ggerganov/ggml)
-
----
-
-## 📄 License
-
-The model weights are subject to Meta's Llama license. Please review:
-- [Llama 3.2 License](https://ai.meta.com/llama/license/)
-
----
-
-## 🤝 Contributing
-
-Found an issue or want to improve this guide? Feel free to open an issue or pull request!
+The repo has no license file. The base model is subject to Meta's Llama 3.2 license.
